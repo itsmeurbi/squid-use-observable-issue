@@ -1,70 +1,55 @@
-# Getting Started with Create React App
+# Purpose
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+This repository is meant to be used only as a playground to replicate and test whay I believe is an unexpected behaviour using the `useObservable` hook from `@squidcloud/react` lib
 
-## Available Scripts
+## Assumptions
 
-In the project directory, you can run:
+This repository assums you have a [Squid](https://squid.cloud) project with a proper MongoDB integration with at least one collection
 
-### `npm start`
+## Setup
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+- Make sure you have installed all the required packages with `npm install`
+- Once all packages are installed, go to `src/index.js` and replace `appId` and `region` props with your Squid application id and its region
+- Go to `src/App.js` and addecuate the `useCollection` hook to use your Squid integration name for MongoDB and the collection name. As it is, it'll look for a `users` collection in a `test` integration
+- Finally run `npm start` and open [http://localhost:3000](http://localhost:3000) to view it in your browser.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## Issue description
 
-### `npm test`
+### System use case
+We have a react application that uses Squid as its backend since one year ago. Right now we are working on an new integration with an external service that is going to have access to one of our databases; the same one Squid has access to.
+This external system will inject new records to one particular collection, and we want to be aware of those changes so we can display those new records without the need of refreshing the page
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+The flow we want to implement is something like this:
+- User clicks a button
+- A fetch request is made to an external service(no Squid)
+- External service collects several data and creates multiple records in a particular collection
+- External services returns a 200 http status
+- We fetch the just-created records and render their data(the 200 http status tell us new data was stored)
 
-### `npm run build`
+### Issue
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+We're usign Squid to retrieve the data from MongoDB, so while playing around with `useObservable` hook, I found what I think is an unexpected behavior.
+One you define the hook in your component, to keep track of changes made by Squid in a particular collection, the future queries made to the same collection stops reflecting what really is in the database, meaning it does not return any change made by external services.
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+Say you have an empty component that exceutes a function that each n seconds fetches the data in a collection, liki this:
+```js
+useCollection('my_collection', 'integration_name').query().dereference().snapshot().then((data) => data)
+```
+It'll correctly reflect what data is in the database, meaning new recrods added directly to the database are being shown with no issues. All this stops working as soon as you add the `useObservable` hook to your component like:
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+```js
+  useObservable(
+    () => {
+      return useCollection('my_collection', 'integration_name').query().dereference().snapshots();
+    }, { }, []
+  );
+```
 
-### `npm run eject`
+The previous query is no longer reflecting the data in MongoDB. No matter if you add or remove multiple collections to the database, query keeps returning the exact same records as the first time it requested data
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+### Evidences:
+The following video serves as an evidence for the described issue
+Please see how data retrieval breaks as soon as the `useCollection` hook is commented out
+[![Video](https://github.com/itsmeurbi/squid-use-observable-issue/blob/main/evidence.mp4)](https://github.com/itsmeurbi/squid-use-observable-issue/blob/main/evidence.mp4)
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+https://github.com/itsmeurbi/squid-use-observable-issue/blob/main/evidence.mp4

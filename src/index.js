@@ -3,12 +3,19 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
+import { SquidContextProvider } from '@squidcloud/react';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
-  <React.StrictMode>
+  <SquidContextProvider
+    options={{
+      appId: 'CHANGE_ME',
+      region: 'CHANGE_ME',
+      environmentId: 'dev'
+    }}
+  >
     <App />
-  </React.StrictMode>
+  </SquidContextProvider>
 );
 
 // If you want to start measuring performance in your app, pass a function
